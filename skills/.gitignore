@@ -1,0 +1,4 @@
+downloaded/
+.cache/
+.venv/
+.env
