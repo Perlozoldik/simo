@@ -1,0 +1,21 @@
+{
+  "name": "indrive-clone",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Production-shaped ride-hailing platform inspired by InDrive",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=@indrive/web",
+    "dev:api": "npm run dev --workspace=@indrive/api",
+    "build:web": "npm run build --workspace=@indrive/web",
+    "build:api": "npm run build --workspace=@indrive/api",
+    "lint": "npm run lint --workspaces --if-present",
+    "prisma:generate": "npm run prisma:generate --workspace=@indrive/api",
+    "prisma:migrate": "npm run prisma:migrate --workspace=@indrive/api"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

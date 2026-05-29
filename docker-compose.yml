@@ -1,0 +1,73 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-indrive}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-indrive_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-indrive}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-indrive_redis_password}"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-indrive}:${POSTGRES_PASSWORD:-indrive_dev_password}@postgres:5432/${POSTGRES_DB:-indrive}?schema=public
+      REDIS_URL: redis://default:${REDIS_PASSWORD:-indrive_redis_password}@redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change_me_access}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change_me_refresh}
+      WEB_URL: ${WEB_URL:-http://localhost:3000}
+    ports:
+      - "${API_PORT:-4000}:4000"
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${API_URL:-http://localhost:4000}
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${API_URL:-http://localhost:4000}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+volumes:
+  postgres_data:
+  redis_data:

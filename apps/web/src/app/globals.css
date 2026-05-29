@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    --font-display: var(--font-sans);
+  }
+
+  html,
+  body {
+    @apply bg-bg text-white antialiased;
+    background-image: theme("backgroundImage.grid-fade");
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: rgba(6, 215, 123, 0.35);
+    color: white;
+  }
+
+  /* Subtle scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.16);
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/[0.04] backdrop-blur-xl border border-white/[0.06];
+  }
+  .glass-strong {
+    @apply bg-white/[0.06] backdrop-blur-2xl border border-white/[0.08];
+  }
+  .card {
+    @apply glass rounded-2xl shadow-card;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-brand-500 text-black hover:bg-brand-400 shadow-glow;
+  }
+  .btn-ghost {
+    @apply btn bg-white/[0.04] text-white hover:bg-white/[0.08] border border-white/[0.06];
+  }
+  .btn-outline {
+    @apply btn border border-white/15 text-white hover:bg-white/[0.04];
+  }
+  .input {
+    @apply w-full rounded-xl bg-white/[0.03] border border-white/[0.08] px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500/40 transition;
+  }
+  .label {
+    @apply text-xs font-medium uppercase tracking-wider text-white/60;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] border border-white/[0.08] px-3 py-1 text-xs text-white/70;
+  }
+  .stat-value {
+    @apply text-3xl font-semibold tracking-tight;
+  }
+  .gradient-text {
+    background: linear-gradient(135deg, #ffffff 0%, #6dffbe 60%, #22d3ee 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .ring-pulse {
+    @apply relative;
+  }
+  .ring-pulse::before {
+    content: "";
+    @apply absolute inset-0 rounded-full bg-brand-500/40 animate-pulseRing;
+  }
+}
+
+/* Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  @apply animate-shimmer rounded-md;
+}
