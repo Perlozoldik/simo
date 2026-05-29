@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Velora — Ride your way</title>
+  <meta name="description" content="Modern ride-hailing platform. Negotiate fares, track drivers in real time, and ride safely." />
+  <meta name="theme-color" content="#07090d" />
+
+  <!-- Tailwind via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            bg: { DEFAULT: "#07090d", subtle: "#0b0e14", elevated: "#11141c" },
+            brand: {
+              50: "#ecfff7", 100: "#d2ffec", 200: "#a7ffd8", 300: "#6dffbe",
+              400: "#33f59d", 500: "#06d77b", 600: "#00b56a", 700: "#008f57",
+              800: "#067047", 900: "#075c3c",
+            },
+          },
+          keyframes: {
+            "fade-in": {
+              "0%": { opacity: "0", transform: "translateY(8px)" },
+              "100%": { opacity: "1", transform: "translateY(0)" },
+            },
+            shimmer: {
+              "0%": { backgroundPosition: "-200% 0" },
+              "100%": { backgroundPosition: "200% 0" },
+            },
+            pulseRing: {
+              "0%": { transform: "scale(0.6)", opacity: "0.7" },
+              "100%": { transform: "scale(2.4)", opacity: "0" },
+            },
+            "slide-in": {
+              "0%": { opacity: "0", transform: "translateX(-12px)" },
+              "100%": { opacity: "1", transform: "translateX(0)" },
+            },
+            "draw-route": {
+              "0%": { strokeDashoffset: "1200" },
+              "100%": { strokeDashoffset: "0" },
+            },
+          },
+          animation: {
+            "fade-in": "fade-in 500ms ease-out both",
+            "slide-in": "slide-in 400ms ease-out both",
+            shimmer: "shimmer 2.4s linear infinite",
+            pulseRing: "pulseRing 1.8s cubic-bezier(0.215,0.61,0.355,1) infinite",
+            "draw-route": "draw-route 2s ease-out both",
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Lucide icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    html, body { background: #07090d; color: white; }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-image:
+        radial-gradient(circle at 50% 0%, rgba(6,215,123,0.12), transparent 50%),
+        radial-gradient(circle at 90% 80%, rgba(139,92,246,0.10), transparent 50%);
+      background-attachment: fixed;
+    }
+    ::selection { background: rgba(6,215,123,0.35); color: white; }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 8px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
+
+    .glass { background: rgba(255,255,255,0.04); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.06); }
+    .glass-strong { background: rgba(255,255,255,0.06); backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.08); }
+    .card { background: rgba(255,255,255,0.04); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.06); border-radius: 1rem; box-shadow: 0 1px 0 0 rgba(255,255,255,0.04) inset, 0 20px 60px -20px rgba(0,0,0,0.6); }
+    .gradient-text {
+      background: linear-gradient(135deg, #ffffff 0%, #6dffbe 60%, #22d3ee 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .chip {
+      display: inline-flex; align-items: center; gap: 0.375rem;
+      border-radius: 9999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 0.25rem 0.75rem;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.7);
+    }
+    .ring-pulse { position: relative; }
+    .ring-pulse::before {
+      content: ""; position: absolute; inset: 0; border-radius: 9999px;
+      background: rgba(6,215,123,0.4);
+      animation: pulseRing 1.8s cubic-bezier(0.215,0.61,0.355,1) infinite;
+    }
+
+    .view { display: none; animation: fade-in 500ms ease-out both; }
+    .view.active { display: block; }
+
+    .nav-tab {
+      padding: 0.5rem 0.875rem;
+      border-radius: 0.625rem;
+      font-size: 0.8125rem;
+      color: rgba(255,255,255,0.6);
+      transition: all 200ms;
+    }
+    .nav-tab:hover { color: white; background: rgba(255,255,255,0.04); }
+    .nav-tab.active { color: black; background: #06d77b; box-shadow: 0 6px 20px -8px rgba(6,215,123,0.6); }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.625rem 1rem; border-radius: 0.75rem;
+      background: #06d77b; color: black;
+      font-size: 0.875rem; font-weight: 500;
+      box-shadow: 0 10px 40px -10px rgba(6,215,123,0.6);
+      transition: background 200ms;
+    }
+    .btn-primary:hover { background: #33f59d; }
+    .btn-ghost {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.625rem 1rem; border-radius: 0.75rem;
+      background: rgba(255,255,255,0.04); color: white;
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.875rem; font-weight: 500;
+      transition: background 200ms;
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.08); }
+
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 2.4s linear infinite;
+      border-radius: 6px;
+    }
+
+    /* Range slider */
+    input[type="range"] { accent-color: #06d77b; }
+
+    /* Map route animation */
+    .route-path { stroke-dasharray: 1200; }
+
+    /* Sidebar pill animation */
+    .sidebar-link { position: relative; transition: all 200ms; }
+    .sidebar-link.active {
+      color: white;
+      background: rgba(6,215,123,0.08);
+      border: 1px solid rgba(6,215,123,0.3);
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+  <!-- ───────────────────────── DEMO TOP TOOLBAR ───────────────────────── -->
+  <div class="sticky top-0 z-50 bg-bg/80 backdrop-blur-xl border-b border-white/10">
+    <div class="max-w-[1400px] mx-auto px-4 h-14 flex items-center gap-3">
+      <div class="flex items-center gap-2">
+        <span class="grid h-8 w-8 place-items-center rounded-xl text-black"
+              style="background: linear-gradient(135deg, #33f59d, #22d3ee); box-shadow: 0 6px 24px -6px rgba(6,215,123,0.6);">
+          <i data-lucide="route" class="h-4 w-4"></i>
+        </span>
+        <span class="font-semibold tracking-tight">Velora</span>
+        <span class="hidden sm:inline ml-2 text-xs text-white/40">UI preview</span>
+      </div>
+      <nav class="ml-auto flex items-center gap-1 overflow-x-auto">
+        <button data-tab="landing" class="nav-tab active">Landing</button>
+        <button data-tab="auth" class="nav-tab">Auth</button>
+        <button data-tab="rider" class="nav-tab">Rider</button>
+        <button data-tab="driver" class="nav-tab">Driver</button>
+        <button data-tab="admin" class="nav-tab">Admin</button>
+      </nav>
+      <a href="https://github.com/Perlozoldik/simo" target="_blank" rel="noopener"
+         class="hidden md:inline-flex items-center gap-2 text-xs text-white/55 hover:text-white transition">
+        <i data-lucide="github" class="h-4 w-4"></i> Repo
+      </a>
+    </div>
+  </div>
+
+  <!-- ───────────────────────── LANDING VIEW ───────────────────────── -->
+  <section data-view="landing" class="view active">
+    <!-- HERO -->
+    <section class="relative overflow-hidden">
+      <div class="absolute inset-0 -z-10 pointer-events-none">
+        <div class="absolute -top-40 left-1/2 h-[700px] w-[1200px] -translate-x-1/2 rounded-full blur-[160px]"
+             style="background: rgba(6,215,123,0.20);"></div>
+        <div class="absolute top-40 right-0 h-[400px] w-[400px] rounded-full blur-[120px]"
+             style="background: rgba(139,92,246,0.18);"></div>
+      </div>
+      <div class="max-w-[1400px] mx-auto px-4 pt-20 pb-28 lg:pt-28 lg:pb-32 grid lg:grid-cols-12 gap-10 items-center">
+        <div class="lg:col-span-7 space-y-8">
+          <span class="chip animate-fade-in">
+            <i data-lucide="sparkles" class="h-3.5 w-3.5 text-brand-400"></i>
+            Now negotiating fares in 32 cities
+          </span>
+          <h1 class="text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight leading-[1.05] animate-fade-in">
+            Set your price.<br />
+            <span class="gradient-text">Move on your terms.</span>
+          </h1>
+          <p class="text-lg text-white/70 max-w-xl animate-fade-in">
+            Velora is the next-generation ride-hailing platform where riders propose fares, drivers respond
+            in real time, and every trip is tracked, chatted, and paid the way you want.
+          </p>
+          <div class="flex flex-wrap items-center gap-3 animate-fade-in">
+            <button class="btn-primary text-base px-5 py-3" onclick="switchTab('rider')">
+              Book your first ride
+              <i data-lucide="arrow-right" class="h-4 w-4"></i>
+            </button>
+            <button class="btn-ghost text-base px-5 py-3" onclick="switchTab('driver')">
+              Drive with Velora
+            </button>
+          </div>
+          <div class="flex flex-wrap gap-6 pt-4 text-sm text-white/60 animate-fade-in">
+            <div><div class="text-2xl font-semibold text-white">2.4M+</div><div class="text-xs uppercase tracking-wider text-white/50">Riders</div></div>
+            <div><div class="text-2xl font-semibold text-white">180k</div><div class="text-xs uppercase tracking-wider text-white/50">Verified drivers</div></div>
+            <div><div class="text-2xl font-semibold text-white">4.9★</div><div class="text-xs uppercase tracking-wider text-white/50">Avg. rating</div></div>
+            <div><div class="text-2xl font-semibold text-white">32</div><div class="text-xs uppercase tracking-wider text-white/50">Cities live</div></div>
+          </div>
+        </div>
+
+        <!-- Live offer card -->
+        <div class="lg:col-span-5 animate-fade-in">
+          <div class="card p-6 relative overflow-hidden">
+            <div class="absolute -top-20 -right-20 h-56 w-56 rounded-full blur-3xl" style="background: rgba(6,215,123,0.20);"></div>
+            <div class="flex items-center justify-between">
+              <div class="text-sm text-white/60">Live offer</div>
+              <div class="chip"><span class="h-1.5 w-1.5 rounded-full bg-brand-400" style="animation: pulse 2s infinite;"></span>Searching nearby</div>
+            </div>
+            <div class="mt-6 space-y-3">
+              <div class="flex items-center gap-3">
+                <span class="grid h-8 w-8 place-items-center rounded-lg bg-white/[0.05] border border-white/[0.06]"><i data-lucide="map-pin" class="h-4 w-4 text-brand-400"></i></span>
+                <div><div class="text-xs uppercase tracking-wider text-white/50">Pickup</div><div class="text-sm">Marina Bay, Singapore</div></div>
+              </div>
+              <div class="ml-2 h-6 w-px bg-white/10"></div>
+              <div class="flex items-center gap-3">
+                <span class="grid h-8 w-8 place-items-center rounded-lg bg-white/[0.05] border border-white/[0.06]"><i data-lucide="navigation-2" class="h-4 w-4 text-cyan-400"></i></span>
+                <div><div class="text-xs uppercase tracking-wider text-white/50">Dropoff</div><div class="text-sm">Changi Airport, T3</div></div>
+              </div>
+            </div>
+            <div class="mt-6 rounded-xl bg-white/[0.03] border border-white/[0.06] p-4">
+              <div class="flex items-center justify-between">
+                <div><div class="text-xs uppercase tracking-wider text-white/50">Your offer</div><div class="mt-1 text-3xl font-semibold tracking-tight">$24.50</div></div>
+                <div class="text-right"><div class="text-xs uppercase tracking-wider text-white/50">ETA</div><div class="mt-1 text-3xl font-semibold tracking-tight">4 min</div></div>
+              </div>
+            </div>
+            <div class="mt-4 space-y-2">
+              <div class="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+                <div class="flex items-center gap-3">
+                  <div class="grid h-9 w-9 place-items-center rounded-full text-xs font-semibold" style="background: linear-gradient(135deg, rgba(6,215,123,0.30), rgba(139,92,246,0.30));">AK</div>
+                  <div><div class="text-sm font-medium">Aisha K.</div><div class="text-xs text-white/50">★ 4.97 · 3 min away</div></div>
+                </div>
+                <div class="text-sm font-semibold">$26.00</div>
+              </div>
+              <div class="flex items-center justify-between rounded-xl border px-3 py-2.5"
+                   style="background: rgba(6,215,123,0.10); border-color: rgba(6,215,123,0.40);">
+                <div class="flex items-center gap-3">
+                  <div class="grid h-9 w-9 place-items-center rounded-full text-xs font-semibold" style="background: linear-gradient(135deg, rgba(6,215,123,0.30), rgba(139,92,246,0.30));">MR</div>
+                  <div><div class="text-sm font-medium">Marco R.</div><div class="text-xs text-white/50">★ 4.92 · 5 min away</div></div>
+                </div>
+                <div class="text-sm font-semibold">$24.50</div>
+              </div>
+              <div class="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+                <div class="flex items-center gap-3">
+                  <div class="grid h-9 w-9 place-items-center rounded-full text-xs font-semibold" style="background: linear-gradient(135deg, rgba(6,215,123,0.30), rgba(139,92,246,0.30));">DL</div>
+                  <div><div class="text-sm font-medium">Devon L.</div><div class="text-xs text-white/50">★ 4.88 · 8 min away</div></div>
+                </div>
+                <div class="text-sm font-semibold">$22.00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="relative py-24">
+      <div class="max-w-[1400px] mx-auto px-4">
+        <div class="max-w-2xl">
+          <span class="chip">Why Velora</span>
+          <h2 class="mt-4 text-4xl md:text-5xl font-semibold tracking-tight">
+            A modern way to move, <span class="gradient-text">built for both sides</span>.
+          </h2>
+          <p class="mt-4 text-white/65 text-lg">
+            Designed from the ground up for transparency, fairness, and speed — with the polish of a billion-dollar product.
+          </p>
+        </div>
+        <div class="mt-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-4" id="features-grid"></div>
+      </div>
+    </section>
+
+    <!-- DRIVER SECTION -->
+    <section class="py-24 relative">
+      <div class="max-w-[1400px] mx-auto px-4 grid lg:grid-cols-2 gap-12 items-center">
+        <div class="card p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-xs uppercase tracking-wider text-white/50">Today's earnings</div>
+              <div class="mt-1 text-4xl font-semibold tracking-tight">$284.40</div>
+            </div>
+            <div class="chip" style="color: #6dffbe; border-color: rgba(6,215,123,0.30); background: rgba(6,215,123,0.10);">
+              <i data-lucide="toggle-right" class="h-4 w-4"></i> You're online
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div class="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3"><div class="text-xs uppercase tracking-wider text-white/50">Trips</div><div class="mt-1 text-xl font-semibold">14</div></div>
+            <div class="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3"><div class="text-xs uppercase tracking-wider text-white/50">Hours</div><div class="mt-1 text-xl font-semibold">6.2</div></div>
+            <div class="rounded-xl border border-white/[0.06] bg-white/[0.03] p-3"><div class="text-xs uppercase tracking-wider text-white/50">Rating</div><div class="mt-1 text-xl font-semibold">4.97</div></div>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-white/60">Weekly goal</span><span class="font-medium">$1,200</span>
+            </div>
+            <div class="mt-2 h-2 w-full rounded-full bg-white/10 overflow-hidden">
+              <div class="h-full" style="width: 72%; background: linear-gradient(90deg, #06d77b, #22d3ee);"></div>
+            </div>
+            <div class="mt-2 text-xs text-white/50">$864 earned · 3 days left</div>
+          </div>
+        </div>
+        <div>
+          <span class="chip">For drivers</span>
+          <h2 class="mt-4 text-4xl md:text-5xl font-semibold tracking-tight">
+            Drive smarter. <span class="gradient-text">Earn on your terms.</span>
+          </h2>
+          <p class="mt-4 text-white/65 text-lg">
+            Set your own counter-offers, see profitable rides at a glance, and withdraw earnings instantly. Zero hidden fees.
+          </p>
+          <ul class="mt-6 space-y-3 text-sm text-white/75">
+            <li class="flex items-start gap-2"><i data-lucide="trending-up" class="h-4 w-4 mt-0.5 text-brand-300"></i>Real-time earnings analytics & insights</li>
+            <li class="flex items-start gap-2"><i data-lucide="badge-check" class="h-4 w-4 mt-0.5 text-brand-300"></i>Streamlined verification with document uploads</li>
+            <li class="flex items-start gap-2"><i data-lucide="wallet" class="h-4 w-4 mt-0.5 text-brand-300"></i>Withdraw earnings to bank, card, or crypto</li>
+          </ul>
+          <div class="mt-8">
+            <button class="btn-primary text-base px-5 py-3" onclick="switchTab('driver')">
+              Apply to drive <i data-lucide="arrow-right" class="h-4 w-4"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="py-24">
+      <div class="max-w-[1400px] mx-auto px-4">
+        <div class="relative overflow-hidden rounded-3xl border border-white/[0.08] p-10 lg:p-14">
+          <div class="absolute inset-0 -z-10" style="background: linear-gradient(135deg, rgba(6,215,123,0.15), transparent, rgba(139,92,246,0.15));"></div>
+          <div class="grid lg:grid-cols-2 gap-8 items-center">
+            <div>
+              <span class="chip"><i data-lucide="shield-check" class="h-3.5 w-3.5 text-brand-300"></i>Trusted, verified, transparent</span>
+              <h3 class="mt-4 text-3xl md:text-4xl font-semibold tracking-tight">
+                The platform that <span class="gradient-text">moves with you</span>.
+              </h3>
+              <p class="mt-3 text-white/70 max-w-md">Whether you're catching a ride or driving one, Velora puts the power back in your hands.</p>
+            </div>
+            <div class="flex flex-col sm:flex-row lg:justify-end gap-3">
+              <button class="btn-primary text-base px-5 py-3" onclick="switchTab('rider')">Sign up as rider <i data-lucide="arrow-right" class="h-4 w-4"></i></button>
+              <button class="btn-ghost text-base px-5 py-3" onclick="switchTab('driver')">Drive with us</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-white/[0.06] py-14">
+      <div class="max-w-[1400px] mx-auto px-4 grid lg:grid-cols-5 gap-10">
+        <div class="lg:col-span-2 space-y-3">
+          <div class="flex items-center gap-2">
+            <span class="grid h-8 w-8 place-items-center rounded-xl text-black" style="background: linear-gradient(135deg, #33f59d, #22d3ee);"><i data-lucide="route" class="h-4 w-4"></i></span>
+            <span class="font-semibold">Velora</span>
+          </div>
+          <p class="text-sm text-white/55 max-w-sm">Velora is a next-generation ride-hailing platform built for transparency, fairness, and speed.</p>
+        </div>
+        <div><div class="text-xs uppercase tracking-wider text-white/50">Product</div><ul class="mt-3 space-y-2 text-sm"><li class="text-white/75">Riders</li><li class="text-white/75">Drivers</li><li class="text-white/75">Safety</li><li class="text-white/75">Pricing</li></ul></div>
+        <div><div class="text-xs uppercase tracking-wider text-white/50">Company</div><ul class="mt-3 space-y-2 text-sm"><li class="text-white/75">About</li><li class="text-white/75">Careers</li><li class="text-white/75">Press</li><li class="text-white/75">Contact</li></ul></div>
+        <div><div class="text-xs uppercase tracking-wider text-white/50">Legal</div><ul class="mt-3 space-y-2 text-sm"><li class="text-white/75">Terms</li><li class="text-white/75">Privacy</li><li class="text-white/75">Cookies</li></ul></div>
+      </div>
+      <div class="max-w-[1400px] mx-auto px-4 mt-10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/40">
+        <span>© 2026 Velora Mobility, Inc.</span>
+        <span>Built with Next.js · Express · Prisma · Socket.io</span>
+      </div>
+    </footer>
+  </section>
+
+  <!-- ───────────────────────── AUTH VIEW ───────────────────────── -->
+  <section data-view="auth" class="view">
+    <div class="grid lg:grid-cols-2 min-h-[calc(100vh-3.5rem)]">
+      <div class="hidden lg:flex flex-col justify-between p-10 border-r border-white/[0.06] relative overflow-hidden" style="background: rgba(11,14,20,0.4);">
+        <div class="absolute -top-24 -left-24 h-80 w-80 rounded-full blur-3xl" style="background: rgba(6,215,123,0.20);"></div>
+        <div class="absolute bottom-0 right-0 h-80 w-80 rounded-full blur-3xl" style="background: rgba(139,92,246,0.20);"></div>
+        <div class="flex items-center gap-2 relative z-10">
+          <span class="grid h-8 w-8 place-items-center rounded-xl text-black" style="background: linear-gradient(135deg, #33f59d, #22d3ee);"><i data-lucide="route" class="h-4 w-4"></i></span>
+          <span class="font-semibold">Velora</span>
+        </div>
+        <div class="space-y-4 max-w-md relative z-10">
+          <h2 class="text-3xl font-semibold tracking-tight">
+            The ride-hailing platform built for <span class="gradient-text">a fairer road</span>.
+          </h2>
+          <p class="text-white/65">Negotiate fares, track drivers in real time, and pay your way — join 2.4M riders and 180k drivers already on Velora.</p>
+        </div>
+        <div class="text-xs text-white/40 relative z-10">© 2026 Velora Mobility, Inc.</div>
+      </div>
+      <div class="flex flex-col items-center justify-center p-6 sm:p-10">
+        <div class="w-full max-w-md space-y-6 animate-fade-in">
+          <div>
+            <h1 class="text-3xl font-semibold tracking-tight">Welcome back</h1>
+            <p class="mt-1 text-sm text-white/60">Sign in to continue your journey on Velora.</p>
+          </div>
+          <button class="btn-ghost w-full">
+            <svg class="h-4 w-4" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.5 29.3 4.5 24 4.5 16.3 4.5 9.6 8.9 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.8-2 13.3-5.2l-6.1-5c-2 1.4-4.5 2.2-7.2 2.2-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.4 39.8 16.1 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.4 4.2-4.4 5.6l6.1 5C40.6 35.4 44 30.1 44 24c0-1.3-.1-2.3-.4-3.5z"/></svg>
+            Continue with Google
+          </button>
+          <div class="flex items-center gap-3 text-xs uppercase tracking-wider text-white/40">
+            <span class="h-px flex-1 bg-white/10"></span>or with email<span class="h-px flex-1 bg-white/10"></span>
+          </div>
+          <form class="space-y-4" onsubmit="event.preventDefault(); switchTab('rider');">
+            <div class="space-y-1.5">
+              <label class="text-xs font-medium uppercase tracking-wider text-white/60">Email</label>
+              <div class="relative">
+                <i data-lucide="mail" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50"></i>
+                <input type="email" placeholder="you@velora.app" value="lina@velora.app"
+                  class="w-full rounded-xl bg-white/[0.03] border border-white/[0.08] pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500/40">
+              </div>
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-xs font-medium uppercase tracking-wider text-white/60">Password</label>
+              <div class="relative">
+                <i data-lucide="lock" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50"></i>
+                <input type="password" placeholder="••••••••" value="velorapass2026"
+                  class="w-full rounded-xl bg-white/[0.03] border border-white/[0.08] pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500/40">
+              </div>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <label class="flex items-center gap-2 text-white/70"><input type="checkbox" class="h-4 w-4 rounded border-white/20 bg-white/[0.04]">Remember me</label>
+              <a class="text-brand-300 hover:text-brand-200 cursor-pointer">Forgot password?</a>
+            </div>
+            <button type="submit" class="btn-primary w-full py-3">Sign in</button>
+          </form>
+          <p class="text-center text-sm text-white/60">
+            New to Velora? <a class="text-brand-300 hover:text-brand-200 font-medium cursor-pointer">Create an account</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── RIDER VIEW ───────────────────────── -->
+  <section data-view="rider" class="view">
+    <div class="flex min-h-[calc(100vh-3.5rem)]">
+      <!-- Sidebar -->
+      <aside class="hidden lg:flex w-64 shrink-0 flex-col border-r border-white/[0.06]" style="background: rgba(11,14,20,0.4); backdrop-filter: blur(20px);">
+        <div class="h-16 flex items-center px-5 border-b border-white/[0.06]">
+          <div class="flex items-center gap-2">
+            <span class="grid h-8 w-8 place-items-center rounded-xl text-black" style="background: linear-gradient(135deg, #33f59d, #22d3ee);"><i data-lucide="route" class="h-4 w-4"></i></span>
+            <span class="font-semibold">Velora</span>
+          </div>
+        </div>
+        <nav class="flex-1 p-3 space-y-1">
+          <div class="px-3 py-2 text-xs uppercase tracking-wider text-white/40">Rider</div>
+          <a class="sidebar-link active flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm"><i data-lucide="car" class="h-4 w-4"></i>Book a ride</a>
+          <a class="sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]"><i data-lucide="history" class="h-4 w-4"></i>Trip history</a>
+          <a class="sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]"><i data-lucide="bookmark" class="h-4 w-4"></i>Saved places</a>
+          <a class="sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]"><i data-lucide="message-square" class="h-4 w-4"></i>Chat<span class="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-brand-500/20 text-brand-300">2</span></a>
+          <a class="sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]"><i data-lucide="wallet" class="h-4 w-4"></i>Wallet</a>
+        </nav>
+        <div class="p-3 border-t border-white/[0.06]">
+          <button class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]" onclick="switchTab('landing')">
+            <i data-lucide="log-out" class="h-4 w-4"></i>Sign out
+          </button>
+        </div>
+      </aside>
+
+      <div class="flex-1 flex flex-col min-w-0">
+        <!-- Topbar -->
+        <header class="h-16 border-b border-white/[0.06] sticky top-14 z-30" style="background: rgba(11,14,20,0.4); backdrop-filter: blur(20px);">
+          <div class="h-full px-5 flex items-center justify-between">
+            <h1 class="text-lg font-semibold tracking-tight">Velora Rider</h1>
+            <div class="flex items-center gap-2">
+              <div class="hidden md:flex items-center gap-2 rounded-xl bg-white/[0.04] border border-white/[0.06] px-3 py-2 w-72">
+                <i data-lucide="search" class="h-4 w-4 text-white/50"></i>
+                <input placeholder="Search" class="bg-transparent text-sm placeholder:text-white/40 focus:outline-none w-full">
+                <kbd class="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/50">⌘K</kbd>
+              </div>
+              <button class="grid h-10 w-10 place-items-center rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08] relative">
+                <i data-lucide="bell" class="h-4 w-4"></i>
+                <span class="absolute top-2 right-2 h-2 w-2 rounded-full bg-brand-400"></span>
+              </button>
+              <div class="flex items-center gap-3 rounded-xl px-2 py-1.5">
+                <div class="grid h-9 w-9 place-items-center rounded-full text-xs font-semibold" style="background: linear-gradient(135deg, rgba(6,215,123,0.30), rgba(139,92,246,0.30)); border: 1px solid rgba(255,255,255,0.10);">LP</div>
+                <div class="hidden sm:block leading-tight">
+                  <div class="text-sm font-medium">Lina P.</div>
+                  <div class="text-xs text-white/50">rider</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main class="flex-1 p-5 lg:p-7">
+          <div class="grid lg:grid-cols-[420px_1fr] gap-5 h-full min-h-[640px]">
+            <!-- Booking panel -->
+            <div class="card p-5 flex flex-col">
+              <div>
+                <h2 class="text-xl font-semibold tracking-tight">Where to?</h2>
+                <p class="text-sm text-white/55">Set your trip and propose a fare. Drivers will counter in real time.</p>
+              </div>
+              <div class="mt-5 space-y-2">
+                <div class="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5">
+                  <span class="grid h-8 w-8 place-items-center rounded-lg bg-white/[0.04] border border-white/[0.06]"><i data-lucide="map-pin" class="h-4 w-4 text-brand-400"></i></span>
+                  <div class="flex-1"><div class="text-[10px] uppercase tracking-wider text-white/45">Pickup</div><input value="Marina Bay, Singapore" class="w-full bg-transparent text-sm focus:outline-none"></div>
+                </div>
+                <div class="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5">
+                  <span class="grid h-8 w-8 place-items-center rounded-lg bg-white/[0.04] border border-white/[0.06]"><i data-lucide="navigation-2" class="h-4 w-4 text-cyan-400"></i></span>
+                  <div class="flex-1"><div class="text-[10px] uppercase tracking-wider text-white/45">Dropoff</div><input value="Changi Airport, T3" class="w-full bg-transparent text-sm focus:outline-none"></div>
+                </div>
+              </div>
+              <div class="mt-5 space-y-2.5">
+                <div class="flex items-center justify-between text-xs text-white/55">
+                  <span class="uppercase tracking-wider">Your offer</span><span>Suggested $24.50</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span id="fare-display" class="text-3xl font-semibold tracking-tight">$24.50</span>
+                  <input id="fare-slider" type="range" min="12" max="40" step="0.5" value="24.5" class="flex-1">
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                  <button class="chip" onclick="setFare(18)">$18 fast</button>
+                  <button class="chip" onclick="setFare(24.5)">$24.50 fair</button>
+                  <button class="chip" onclick="setFare(32)">$32 priority</button>
+                </div>
+              </div>
+              <div class="mt-5 space-y-2">
+                <div class="text-xs uppercase tracking-wider text-white/55">Payment method</div>
+                <div class="grid grid-cols-4 gap-2">
+                  <button class="payment-btn flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-xs transition border-brand-500/60 bg-brand-500/10 text-brand-200" data-method="cash"><i data-lucide="banknote" class="h-4 w-4"></i>Cash</button>
+                  <button class="payment-btn flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-xs transition border-white/[0.08] bg-white/[0.02] text-white/65 hover:bg-white/[0.05]" data-method="card"><i data-lucide="credit-card" class="h-4 w-4"></i>Card</button>
+                  <button class="payment-btn flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-xs transition border-white/[0.08] bg-white/[0.02] text-white/65 hover:bg-white/[0.05]" data-method="paypal"><i data-lucide="credit-card" class="h-4 w-4"></i>PayPal</button>
+                  <button class="payment-btn flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-xs transition border-white/[0.08] bg-white/[0.02] text-white/65 hover:bg-white/[0.05]" data-method="crypto"><i data-lucide="bitcoin" class="h-4 w-4"></i>Crypto</button>
+                </div>
+              </div>
+              <div class="mt-auto pt-5 space-y-3">
+                <button class="btn-primary w-full py-3"><i data-lucide="search" class="h-4 w-4"></i>Find drivers</button>
+                <button class="w-full flex items-center justify-center gap-2 text-xs text-white/55 hover:text-white">
+                  <i data-lucide="shield-alert" class="h-3.5 w-3.5"></i>Share trip with trusted contact
+                </button>
+              </div>
+            </div>
+
+            <!-- Map -->
+            <div id="rider-map" class="overflow-hidden rounded-2xl border border-white/[0.06] relative" style="background: radial-gradient(circle at 50% 50%, #0e1320 0%, #06080d 70%); min-height: 640px;"></div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── DRIVER VIEW ───────────────────────── -->
+  <section data-view="driver" class="view">
+    <div class="flex min-h-[calc(100vh-3.5rem)]">
+      <aside class="hidden lg:flex w-64 shrink-0 flex-col border-r border-white/[0.06]" style="background: rgba(11,14,20,0.4); backdrop-filter: blur(20px);">
+        <div class="h-16 flex items-center px-5 border-b border-white/[0.06]">
+          <div class="flex items-center gap-2">
+            <span class="grid h-8 w-8 place-items-center rounded-xl text-black" style="background: linear-gradient(135deg, #33f59d, #22d3ee);"><i data-lucide="route" class="h-4 w-4"></i></span>
+            <span class="font-semibold">Velora</span>
+          </div>
+        </div>
+        <nav class="flex-1 p-3 space-y-1">
+          <div class="px-3 py-2 text-xs uppercase tracking-wider text-white/40">Driver</div>
+          <a class="sidebar-link active flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm"><i data-lucide="gauge" class="h-4 w-4"></i>Dashboard</a>
+          <a class="sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]"><i data-lucide="list-checks" class="h-4 w-4"></i>Trips</a>
+          <a class="sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]"><i data-lucide="wallet" class="h-4 w-4"></i>Earnings</a>
+          <a class="sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]"><i data-lucide="badge-check" class="h-4 w-4"></i>Verification</a>
+          <a class="sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]"><i data-lucide="car" class="h-4 w-4"></i>Vehicle</a>
+        </nav>
+        <div class="p-3 border-t border-white/[0.06]">
+          <button class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]" onclick="switchTab('landing')">
+            <i data-lucide="log-out" class="h-4 w-4"></i>Sign out
+          </button>
+        </div>
+      </aside>
+
+      <div class="flex-1 flex flex-col min-w-0">
+        <header class="h-16 border-b border-white/[0.06] sticky top-14 z-30" style="background: rgba(11,14,20,0.4); backdrop-filter: blur(20px);">
+          <div class="h-full px-5 flex items-center justify-between">
+            <h1 class="text-lg font-semibold tracking-tight">Velora Driver</h1>
+            <div class="flex items-center gap-3 rounded-xl px-2 py-1.5">
+              <div class="grid h-9 w-9 place-items-center rounded-full text-xs font-semibold" style="background: linear-gradient(135deg, rgba(6,215,123,0.30), rgba(139,92,246,0.30)); border: 1px solid rgba(255,255,255,0.10);">MR</div>
+              <div class="hidden sm:block leading-tight">
+                <div class="text-sm font-medium">Marco R.</div>
+                <div class="text-xs text-white/50">driver</div>
+              </div>
+            </div>
+          </div>
+        </header>
+        <main class="flex-1 p-5 lg:p-7 space-y-5">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <h1 class="text-2xl font-semibold tracking-tight">Good morning, Marco</h1>
+              <p class="text-sm text-white/55">You're visible to nearby riders.</p>
+            </div>
+            <button class="flex items-center gap-2 rounded-xl px-4 py-3 border" style="background: rgba(6,215,123,0.10); border-color: rgba(6,215,123,0.40); color: #6dffbe;">
+              <i data-lucide="toggle-right" class="h-5 w-5"></i> Online
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="card p-5 flex items-center gap-3"><span class="grid h-10 w-10 place-items-center rounded-xl text-brand-300" style="background: rgba(6,215,123,0.10); border: 1px solid rgba(6,215,123,0.20);"><i data-lucide="trending-up" class="h-4 w-4"></i></span><div><div class="text-xs uppercase tracking-wider text-white/50">Today</div><div class="text-xl font-semibold">$284.40</div></div></div>
+            <div class="card p-5 flex items-center gap-3"><span class="grid h-10 w-10 place-items-center rounded-xl text-brand-300" style="background: rgba(6,215,123,0.10); border: 1px solid rgba(6,215,123,0.20);"><i data-lucide="car" class="h-4 w-4"></i></span><div><div class="text-xs uppercase tracking-wider text-white/50">Trips</div><div class="text-xl font-semibold">14</div></div></div>
+            <div class="card p-5 flex items-center gap-3"><span class="grid h-10 w-10 place-items-center rounded-xl text-brand-300" style="background: rgba(6,215,123,0.10); border: 1px solid rgba(6,215,123,0.20);"><i data-lucide="star" class="h-4 w-4"></i></span><div><div class="text-xs uppercase tracking-wider text-white/50">Rating</div><div class="text-xl font-semibold">4.97</div></div></div>
+            <div class="card p-5 flex items-center gap-3"><span class="grid h-10 w-10 place-items-center rounded-xl text-brand-300" style="background: rgba(6,215,123,0.10); border: 1px solid rgba(6,215,123,0.20);"><i data-lucide="timer" class="h-4 w-4"></i></span><div><div class="text-xs uppercase tracking-wider text-white/50">Hours</div><div class="text-xl font-semibold">6.2</div></div></div>
+          </div>
+
+          <div class="grid lg:grid-cols-[1fr_420px] gap-5">
+            <div class="card overflow-hidden">
+              <div id="driver-map" class="overflow-hidden relative" style="background: radial-gradient(circle at 50% 50%, #0e1320 0%, #06080d 70%); height: 480px;"></div>
+            </div>
+            <div class="card">
+              <div class="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between">
+                <h3 class="text-sm font-semibold tracking-tight">Incoming requests</h3>
+                <span class="chip" style="color: #6dffbe; border-color: rgba(6,215,123,0.30); background: rgba(6,215,123,0.10);">2 new</span>
+              </div>
+              <div class="p-0 max-h-[480px] overflow-auto">
+                <div class="px-5 py-4 border-b border-white/[0.06] animate-slide-in">
+                  <div class="flex items-center gap-3">
+                    <div class="grid h-9 w-9 place-items-center rounded-full text-xs font-semibold" style="background: linear-gradient(135deg, rgba(6,215,123,0.30), rgba(139,92,246,0.30));">LP</div>
+                    <div class="flex-1 min-w-0"><div class="font-medium">Lina P.</div><div class="text-xs text-white/55">★ 4.9 · 21.2 km trip</div></div>
+                    <div class="text-right"><div class="text-base font-semibold">$24.50</div><div class="text-[10px] text-white/45 uppercase tracking-wider">proposed</div></div>
+                  </div>
+                  <div class="mt-3 text-sm text-white/70 truncate">Marina Bay → Changi Airport T3</div>
+                  <div class="mt-3 grid grid-cols-3 gap-2">
+                    <button class="btn-ghost text-xs py-2">Counter</button>
+                    <button class="btn-primary text-xs py-2"><i data-lucide="check-circle-2" class="h-4 w-4"></i>Accept</button>
+                    <button class="text-xs py-2 rounded-xl text-white" style="background: rgba(244,63,94,0.85);"><i data-lucide="x-circle" class="h-4 w-4 inline"></i> Reject</button>
+                  </div>
+                </div>
+                <div class="px-5 py-4 animate-slide-in" style="animation-delay: 80ms;">
+                  <div class="flex items-center gap-3">
+                    <div class="grid h-9 w-9 place-items-center rounded-full text-xs font-semibold" style="background: linear-gradient(135deg, rgba(6,215,123,0.30), rgba(139,92,246,0.30));">KT</div>
+                    <div class="flex-1 min-w-0"><div class="font-medium">Kenji T.</div><div class="text-xs text-white/55">★ 4.7 · 14.4 km trip</div></div>
+                    <div class="text-right"><div class="text-base font-semibold">$18.00</div><div class="text-[10px] text-white/45 uppercase tracking-wider">proposed</div></div>
+                  </div>
+                  <div class="mt-3 text-sm text-white/70 truncate">Bugis → Sentosa</div>
+                  <div class="mt-3 grid grid-cols-3 gap-2">
+                    <button class="btn-ghost text-xs py-2">Counter</button>
+                    <button class="btn-primary text-xs py-2"><i data-lucide="check-circle-2" class="h-4 w-4"></i>Accept</button>
+                    <button class="text-xs py-2 rounded-xl text-white" style="background: rgba(244,63,94,0.85);"><i data-lucide="x-circle" class="h-4 w-4 inline"></i> Reject</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Earnings chart -->
+          <div class="card">
+            <div class="px-5 py-4 border-b border-white/[0.06]">
+              <h3 class="text-sm font-semibold tracking-tight">Weekly trend</h3>
+            </div>
+            <div class="p-5">
+              <div class="flex items-end gap-3 h-48" id="weekly-chart"></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── ADMIN VIEW ───────────────────────── -->
+  <section data-view="admin" class="view">
+    <div class="flex min-h-[calc(100vh-3.5rem)]">
+      <aside class="hidden lg:flex w-64 shrink-0 flex-col border-r border-white/[0.06]" style="background: rgba(11,14,20,0.4); backdrop-filter: blur(20px);">
+        <div class="h-16 flex items-center px-5 border-b border-white/[0.06]">
+          <div class="flex items-center gap-2">
+            <span class="grid h-8 w-8 place-items-center rounded-xl text-black" style="background: linear-gradient(135deg, #33f59d, #22d3ee);"><i data-lucide="route" class="h-4 w-4"></i></span>
+            <span class="font-semibold">Velora</span>
+          </div>
+        </div>
+        <nav class="flex-1 p-3 space-y-1">
+          <div class="px-3 py-2 text-xs uppercase tracking-wider text-white/40">Admin</div>
+          <a class="sidebar-link active flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm"><i data-lucide="gauge" class="h-4 w-4"></i>Overview</a>
+          <a class="sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]"><i data-lucide="users" class="h-4 w-4"></i>Users</a>
+          <a class="sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]"><i data-lucide="shield-check" class="h-4 w-4"></i>Drivers</a>
+          <a class="sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]"><i data-lucide="car" class="h-4 w-4"></i>Live rides</a>
+          <a class="sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]"><i data-lucide="dollar-sign" class="h-4 w-4"></i>Revenue</a>
+          <a class="sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]"><i data-lucide="alert-triangle" class="h-4 w-4"></i>Fraud<span class="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-brand-500/20 text-brand-300">3</span></a>
+          <a class="sidebar-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]"><i data-lucide="settings" class="h-4 w-4"></i>Settings</a>
+        </nav>
+        <div class="p-3 border-t border-white/[0.06]">
+          <button class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.04]" onclick="switchTab('landing')">
+            <i data-lucide="log-out" class="h-4 w-4"></i>Sign out
+          </button>
+        </div>
+      </aside>
+
+      <div class="flex-1 flex flex-col min-w-0">
+        <header class="h-16 border-b border-white/[0.06] sticky top-14 z-30" style="background: rgba(11,14,20,0.4); backdrop-filter: blur(20px);">
+          <div class="h-full px-5 flex items-center justify-between">
+            <h1 class="text-lg font-semibold tracking-tight">Velora Admin</h1>
+            <div class="flex items-center gap-3 rounded-xl px-2 py-1.5">
+              <div class="grid h-9 w-9 place-items-center rounded-full text-xs font-semibold" style="background: linear-gradient(135deg, rgba(6,215,123,0.30), rgba(139,92,246,0.30)); border: 1px solid rgba(255,255,255,0.10);">AD</div>
+              <div class="hidden sm:block leading-tight"><div class="text-sm font-medium">Admin</div><div class="text-xs text-white/50">admin</div></div>
+            </div>
+          </div>
+        </header>
+        <main class="flex-1 p-5 lg:p-7 space-y-5">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-2xl font-semibold tracking-tight">Overview</h1>
+              <p class="text-sm text-white/55">Live operational metrics across the platform.</p>
+            </div>
+            <span class="chip" style="color: #6dffbe; border-color: rgba(6,215,123,0.30); background: rgba(6,215,123,0.10);">All systems healthy</span>
+          </div>
+
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="card p-5">
+              <div class="flex items-center justify-between"><span class="text-xs uppercase tracking-wider text-white/50">Active riders</span><span class="grid h-8 w-8 place-items-center rounded-lg bg-white/[0.04] border border-white/[0.06]"><i data-lucide="users" class="h-4 w-4 text-brand-300"></i></span></div>
+              <div class="mt-2 text-2xl font-semibold tracking-tight">12,486</div>
+              <div class="mt-1 text-xs text-brand-300 flex items-center gap-1"><i data-lucide="trending-up" class="h-3.5 w-3.5"></i>+8.2% vs. yesterday</div>
+            </div>
+            <div class="card p-5">
+              <div class="flex items-center justify-between"><span class="text-xs uppercase tracking-wider text-white/50">Online drivers</span><span class="grid h-8 w-8 place-items-center rounded-lg bg-white/[0.04] border border-white/[0.06]"><i data-lucide="user-check" class="h-4 w-4 text-brand-300"></i></span></div>
+              <div class="mt-2 text-2xl font-semibold tracking-tight">1,284</div>
+              <div class="mt-1 text-xs text-brand-300 flex items-center gap-1"><i data-lucide="trending-up" class="h-3.5 w-3.5"></i>+3.1% vs. yesterday</div>
+            </div>
+            <div class="card p-5">
+              <div class="flex items-center justify-between"><span class="text-xs uppercase tracking-wider text-white/50">Live rides</span><span class="grid h-8 w-8 place-items-center rounded-lg bg-white/[0.04] border border-white/[0.06]"><i data-lucide="car" class="h-4 w-4 text-brand-300"></i></span></div>
+              <div class="mt-2 text-2xl font-semibold tracking-tight">342</div>
+              <div class="mt-1 text-xs text-brand-300 flex items-center gap-1"><i data-lucide="trending-up" class="h-3.5 w-3.5"></i>+12.6% vs. yesterday</div>
+            </div>
+            <div class="card p-5">
+              <div class="flex items-center justify-between"><span class="text-xs uppercase tracking-wider text-white/50">Today revenue</span><span class="grid h-8 w-8 place-items-center rounded-lg bg-white/[0.04] border border-white/[0.06]"><i data-lucide="dollar-sign" class="h-4 w-4 text-brand-300"></i></span></div>
+              <div class="mt-2 text-2xl font-semibold tracking-tight">$28,430.50</div>
+              <div class="mt-1 text-xs text-brand-300 flex items-center gap-1"><i data-lucide="trending-up" class="h-3.5 w-3.5"></i>+5.4% vs. yesterday</div>
+            </div>
+          </div>
+
+          <div class="grid lg:grid-cols-3 gap-5">
+            <div class="card lg:col-span-2">
+              <div class="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between">
+                <h3 class="text-sm font-semibold tracking-tight">Live rides</h3>
+                <span class="chip" style="color: #67e8f9; border-color: rgba(34,211,238,0.30); background: rgba(34,211,238,0.10);">3 ongoing</span>
+              </div>
+              <div class="divide-y divide-white/[0.06]">
+                <div class="grid grid-cols-12 items-center px-5 py-4">
+                  <div class="col-span-5"><div class="text-sm font-medium">Marina Bay → Changi T3</div><div class="text-xs text-white/55">Lina P. · Marco R.</div></div>
+                  <div class="col-span-3"><span class="chip" style="color: #6dffbe; border-color: rgba(6,215,123,0.30); background: rgba(6,215,123,0.10);">in progress</span></div>
+                  <div class="col-span-2 text-sm text-white/70">4 min</div>
+                  <div class="col-span-2 text-right text-sm font-semibold">$24.50</div>
+                </div>
+                <div class="grid grid-cols-12 items-center px-5 py-4">
+                  <div class="col-span-5"><div class="text-sm font-medium">Bugis → Sentosa</div><div class="text-xs text-white/55">Kenji T. · Aisha K.</div></div>
+                  <div class="col-span-3"><span class="chip" style="color: #6dffbe; border-color: rgba(6,215,123,0.30); background: rgba(6,215,123,0.10);">in progress</span></div>
+                  <div class="col-span-2 text-sm text-white/70">11 min</div>
+                  <div class="col-span-2 text-right text-sm font-semibold">$18.00</div>
+                </div>
+                <div class="grid grid-cols-12 items-center px-5 py-4">
+                  <div class="col-span-5"><div class="text-sm font-medium">Tampines → Orchard</div><div class="text-xs text-white/55">Sara L. · Devon L.</div></div>
+                  <div class="col-span-3"><span class="chip" style="color: #6dffbe; border-color: rgba(6,215,123,0.30); background: rgba(6,215,123,0.10);">in progress</span></div>
+                  <div class="col-span-2 text-sm text-white/70">7 min</div>
+                  <div class="col-span-2 text-right text-sm font-semibold">$22.50</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between">
+                <h3 class="text-sm font-semibold tracking-tight">Fraud alerts</h3>
+                <i data-lucide="alert-triangle" class="h-4 w-4 text-rose-400"></i>
+              </div>
+              <div class="p-5 space-y-3">
+                <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                  <div class="flex items-center justify-between">
+                    <span class="chip" style="color: #fca5a5; border-color: rgba(244,63,94,0.30); background: rgba(244,63,94,0.10);">HIGH</span>
+                    <span class="text-xs text-white/45">2m ago</span>
+                  </div>
+                  <div class="mt-2 text-sm font-medium">Suspicious payment cluster</div>
+                  <div class="text-xs text-white/55">12 cards from same IP within 1h</div>
+                </div>
+                <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                  <div class="flex items-center justify-between">
+                    <span class="chip" style="color: #fcd34d; border-color: rgba(245,158,11,0.30); background: rgba(245,158,11,0.10);">MED</span>
+                    <span class="text-xs text-white/45">9m ago</span>
+                  </div>
+                  <div class="mt-2 text-sm font-medium">Surge anomaly · downtown</div>
+                  <div class="text-xs text-white/55">Predicted demand &gt;180% baseline</div>
+                </div>
+                <div class="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                  <div class="flex items-center justify-between">
+                    <span class="chip" style="color: #67e8f9; border-color: rgba(34,211,238,0.30); background: rgba(34,211,238,0.10);">LOW</span>
+                    <span class="text-xs text-white/45">1h ago</span>
+                  </div>
+                  <div class="mt-2 text-sm font-medium">Driver doc near expiry</div>
+                  <div class="text-xs text-white/55">37 drivers in next 14d</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Revenue chart -->
+          <div class="card">
+            <div class="px-5 py-4 border-b border-white/[0.06]">
+              <h3 class="text-sm font-semibold tracking-tight">Monthly revenue</h3>
+            </div>
+            <div class="p-5">
+              <div class="flex items-end gap-3 h-56" id="revenue-chart"></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── SCRIPTS ───────────────────────── -->
+  <script>
+    // ─── View switching ───────────────────────────────────────────
+    function switchTab(name) {
+      document.querySelectorAll("[data-view]").forEach((v) => v.classList.toggle("active", v.dataset.view === name));
+      document.querySelectorAll(".nav-tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      // Re-mount lucide icons after DOM swap (defensive)
+      if (window.lucide) lucide.createIcons();
+    }
+    document.querySelectorAll(".nav-tab").forEach((btn) =>
+      btn.addEventListener("click", () => switchTab(btn.dataset.tab))
+    );
+
+    // ─── Features grid ────────────────────────────────────────────
+    const features = [
+      { icon: "handshake", title: "Negotiate the fare", body: "Propose a price, see real driver counter-offers, pick the best balance of speed and cost." },
+      { icon: "map", title: "Live driver tracking", body: "Real-time GPS, route preview, and ETA updates pushed instantly over websockets." },
+      { icon: "shield-check", title: "Safety first", body: "SOS button, verified drivers, ride sharing with trusted contacts, and AI fraud detection." },
+      { icon: "credit-card", title: "Pay your way", body: "Cash, Stripe, PayPal, or crypto — every market, every preference." },
+      { icon: "message-circle", title: "In-app chat", body: "Coordinate pickup and luggage privately without sharing your phone number." },
+      { icon: "zap", title: "Smart pricing", body: "Surge transparency, promo codes, and a fair referral program for everyone." },
+      { icon: "bell", title: "Real-time notifications", body: "Push, in-app, and email — never miss a driver match or arrival." },
+      { icon: "languages", title: "Multi-language", body: "Localized for the regions we operate in, with right-to-left support." },
+    ];
+    const fg = document.getElementById("features-grid");
+    if (fg) {
+      fg.innerHTML = features
+        .map(
+          (f, i) => `
+        <div class="card p-5 hover:border-brand-500/30 transition animate-fade-in" style="animation-delay: ${i * 40}ms;">
+          <div class="grid h-10 w-10 place-items-center rounded-xl text-brand-300 transition" style="background: linear-gradient(135deg, rgba(6,215,123,0.20), rgba(34,211,238,0.10)); border: 1px solid rgba(6,215,123,0.20);">
+            <i data-lucide="${f.icon}" class="h-5 w-5"></i>
+          </div>
+          <h3 class="mt-4 text-base font-semibold">${f.title}</h3>
+          <p class="mt-1.5 text-sm text-white/60">${f.body}</p>
+        </div>`
+        )
+        .join("");
+    }
+
+    // ─── Booking: fare slider + payment selector ──────────────────
+    const fareSlider = document.getElementById("fare-slider");
+    const fareDisplay = document.getElementById("fare-display");
+    function setFare(v) {
+      if (fareSlider) fareSlider.value = v;
+      if (fareDisplay) fareDisplay.textContent = "$" + Number(v).toFixed(2);
+    }
+    if (fareSlider) {
+      fareSlider.addEventListener("input", (e) => setFare(e.target.value));
+    }
+    document.querySelectorAll(".payment-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".payment-btn").forEach((b) => {
+          b.classList.remove("border-brand-500/60", "bg-brand-500/10", "text-brand-200");
+          b.classList.add("border-white/[0.08]", "bg-white/[0.02]", "text-white/65", "hover:bg-white/[0.05]");
+        });
+        btn.classList.remove("border-white/[0.08]", "bg-white/[0.02]", "text-white/65", "hover:bg-white/[0.05]");
+        btn.classList.add("border-brand-500/60", "bg-brand-500/10", "text-brand-200");
+      });
+    });
+
+    // ─── Map canvas (rider + driver) ──────────────────────────────
+    function buildMap(target, driverLabel) {
+      target.innerHTML = `
+        <svg viewBox="0 0 800 500" class="absolute inset-0 h-full w-full" aria-hidden="true">
+          <defs>
+            <pattern id="grid-${target.id}" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+            </pattern>
+            <linearGradient id="route-${target.id}" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#06d77b"/><stop offset="100%" stop-color="#22d3ee"/>
+            </linearGradient>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid-${target.id})"/>
+          <path d="M0,360 C200,340 280,260 420,250 S680,230 800,180" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="22" stroke-linecap="round"/>
+          <path d="M120,500 C160,420 220,360 320,310 S540,260 620,160 720,40 800,20" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="14" stroke-linecap="round"/>
+          <path class="route-path animate-draw-route" d="M120,420 C220,380 300,320 420,300 S620,260 700,140"
+                fill="none" stroke="url(#route-${target.id})" stroke-width="4" stroke-linecap="round"/>
+        </svg>
+        <div class="absolute" style="left: 14%; top: 80%; transform: translate(-50%,-50%);">
+          <div class="h-3.5 w-3.5 rounded-full ring-4 ring-black" style="background: #06d77b; box-shadow: 0 0 0 4px rgba(6,215,123,0.20);"></div>
+          <div class="mt-2 -translate-x-1/2 absolute left-1/2 whitespace-nowrap rounded-full bg-black/80 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/70 border border-white/10">Pickup</div>
+        </div>
+        <div class="absolute" style="left: 84%; top: 26%; transform: translate(-50%,-50%);">
+          <div class="h-3.5 w-3.5 rounded-full ring-4 ring-black" style="background: #22d3ee; box-shadow: 0 0 0 4px rgba(34,211,238,0.20);"></div>
+          <div class="mt-2 -translate-x-1/2 absolute left-1/2 whitespace-nowrap rounded-full bg-black/80 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/70 border border-white/10">Dropoff</div>
+        </div>
+        <div class="absolute" style="left: 44%; top: 58%; transform: translate(-50%,-50%);">
+          <div class="ring-pulse">
+            <div class="grid h-10 w-10 place-items-center rounded-full text-black" style="background: #06d77b; box-shadow: 0 10px 30px -5px rgba(6,215,123,0.6);">
+              <i data-lucide="navigation-2" class="h-4 w-4"></i>
+            </div>
+          </div>
+          <div class="mt-2 -translate-x-1/2 absolute left-1/2 whitespace-nowrap rounded-full bg-black/80 px-2.5 py-1 text-[11px] font-medium border border-white/10">${driverLabel}</div>
+        </div>`;
+    }
+    const riderMap = document.getElementById("rider-map");
+    const driverMap = document.getElementById("driver-map");
+    if (riderMap) buildMap(riderMap, "Driver · 4 min");
+    if (driverMap) buildMap(driverMap, "You · online");
+
+    // ─── Bar charts ───────────────────────────────────────────────
+    function buildBars(target, data, color) {
+      const max = Math.max(...data.map((d) => d.v));
+      target.innerHTML = data
+        .map(
+          (d, i) => `
+        <div class="flex-1 flex flex-col items-center gap-2">
+          <div class="w-full max-w-[44px] rounded-md border" style="height: ${(d.v / max) * 100}%; min-height: 2px; background: ${color}; border-color: ${color}; transition: height 600ms ${i * 60}ms;"></div>
+          <div class="text-xs text-white/55">${d.l}</div>
+          <div class="text-xs font-medium">$${d.v.toLocaleString()}</div>
+        </div>`
+        )
+        .join("");
+    }
+    const wc = document.getElementById("weekly-chart");
+    if (wc) {
+      buildBars(wc, [
+        { l: "Mon", v: 162 }, { l: "Tue", v: 198 }, { l: "Wed", v: 174 },
+        { l: "Thu", v: 230 }, { l: "Fri", v: 284 }, { l: "Sat", v: 312 },
+        { l: "Sun", v: 0 },
+      ], "linear-gradient(to top, rgba(6,215,123,0.30), #33f59d)");
+    }
+    const rc = document.getElementById("revenue-chart");
+    if (rc) {
+      buildBars(rc, [
+        { l: "Jan", v: 84200 }, { l: "Feb", v: 92100 },
+        { l: "Mar", v: 110400 }, { l: "Apr", v: 128300 }, { l: "May", v: 154200 },
+      ], "linear-gradient(to top, rgba(139,92,246,0.30), #22d3ee)");
+    }
+
+    // ─── Mount Lucide ─────────────────────────────────────────────
+    if (window.lucide) lucide.createIcons();
+  </script>
+</body>
+</html>
